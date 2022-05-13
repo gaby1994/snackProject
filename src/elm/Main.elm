@@ -11,6 +11,10 @@ import Update
 import Json.Decode as Decode
 import List exposing (indexedMap)
 
+-- CONSTANT
+boardSize : Int
+boardSize = 40
+
 {-| Got from JS side, and Model to modify -}
 type alias Flags = { now : Int }
 type alias Model =
@@ -46,15 +50,15 @@ updateSnake model =
       newSnake = {
           snake | cases = List.map(\(x,y) -> 
             if snake.direction == 0 then 
-              (x,modBy 40 (y - 1))
+              (x,modBy boardSize (y - 1))
             else
             if snake.direction == 1 then
-              (modBy 40 (x+1),y)
+              (modBy boardSize (x+1),y)
             else 
             if snake.direction == 2 then
-              (x,modBy 40 (y + 1))
+              (x,modBy boardSize (y + 1))
             else
-              (modBy 40 (x - 1),y)
+              (modBy boardSize (x - 1),y)
 
           ) snake.cases
 
@@ -127,7 +131,7 @@ movingSquare model =
         )
         elem
        ) 
-        (List.repeat 40 (List.repeat 40 0))
+        (List.repeat boardSize (List.repeat boardSize 0))
       )
     )
 
