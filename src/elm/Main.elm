@@ -38,14 +38,13 @@ type alias Model =
         cases : List Position
       , direction : Direction
       , head :  Position
-      , tail : List Position
     }
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}, tail= [{x= 0 , y = 0}]}
+  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}}
   |> Update.none
 
 {-| All your messages should go there -}
@@ -83,7 +82,7 @@ updateSnakeBody model =
       cases = movePositions model.snake.cases newHeadPosition 
       newCases = if List.length model.snake.cases < 4 then cases else stripLast cases
   in
-    {model |snake = {cases = newCases, head= currentHead, tail = model.snake.tail, direction = model.snake.direction}}
+    {model |snake = {cases = newCases, head= currentHead, direction = model.snake.direction}}
 
 movePositions : List Position -> Position -> List Position
 movePositions positions newFirstPosition =
