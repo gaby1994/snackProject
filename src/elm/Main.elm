@@ -9,7 +9,7 @@ import Time exposing (Posix)
 import Setters
 import Update
 import Json.Decode as Decode
-import List exposing (indexedMap,length)
+import List exposing (length)
 
 -- CONSTANT
 boardSize : Int
@@ -19,6 +19,8 @@ type alias Position =
   { x : Int
   , y : Int
   }
+
+type Direction = Up | Down | Left | Right
 
 type alias Offset =
   { dx : Int
@@ -33,17 +35,17 @@ type alias Model =
   , time : Int
   , coloredSquare : Int
   , snake : {
-        cases : List (Int, Int)
+        cases : List Position
       , direction : Direction
-      , head : (Int, Int)
-      , tail : List (Int, Int)
+      , head :  Position
+      , tail : List Position
     }
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [(0, 0)], direction = Up, head = (0,0), tail = [(0,0)]}
+  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}, tail= [{x= 0 , y = 0}]}
   |> Update.none
 
 {-| All your messages should go there -}
@@ -61,64 +63,61 @@ updateSnake model =
   let 
       casesPrint = Debug.log "snake " snake
 
-      newBody = List.take ((List.length snake.cases) - 1) model.snake.cases
-
-      removedPart = List.drop ((List.length snake.cases) - 1) model.snake.cases
-
-      updateCases = model.snake.cases ++ model.snake.tail
-
       snake = model.snake
-      newSnake = {
-          snake | cases = List.map(\(x,y) -> 
-            if snake.direction == Up then 
-              (x,modBy boardSize (y - 1))
-            else
-            if snake.direction == Right then
-              (modBy boardSize (x+1),y)
-            else 
-            if snake.direction == Down then
-              (x,modBy boardSize (y + 1))
-            else
-              (modBy boardSize (x - 1),y)
-        
-          ) snake.cases ++ nextTail
+      
+      newSnake = updateSnakeBody model
+      
+  in
+    {
+       model | snake = newSnake.snake --newSnake
+    }
 
-        , head =  currentHead
-        
-        , tail = nextTail
-           
-        }
-      -- nextHead = adjustPosition model.snake.head model.direction
+updateSnakeBody: Model -> Model
+updateSnakeBody model = 
+  let 
       currentHead =
             model.snake.cases
                 |> List.head
-                |> Maybe.withDefault ( 0, 0 )
-
-      nextTail =  model.snake.tail
-
-      
+                |> Maybe.withDefault  {x= 0 , y = 0}
+      newHeadPosition = getNewHeadPosition currentHead model.snake.cases model.snake.direction
+      cases = movePositions model.snake.cases newHeadPosition 
+      newCases = if List.length model.snake.cases < 4 then cases else stripLast cases
   in
-    
-    {
-       model | snake = newSnake
-    }
+    {model |snake = {cases = newCases, head= currentHead, tail = model.snake.tail, direction = model.snake.direction}}
 
-type Direction = Up | Down | Left | Right
+movePositions : List Position -> Position -> List Position
+movePositions positions newFirstPosition =
+    newFirstPosition :: positions
 
-directionToOffset: Direction -> Offset
-directionToOffset direction =
-  case direction of 
-    Up -> Offset 0 -1
-    Down -> Offset 0 1
-    Left -> Offset -1 0
-    Right -> Offset 1 0
 
-applyOffset : Position -> Offset -> Position
-applyOffset pos offset = Position (pos.x + offset.dx) (pos.y + offset.dy)
+getNewHeadPosition : Position -> List Position -> Direction -> Position
+getNewHeadPosition currentHead positions direction =
+    let
+        maybeSnakeHead =
+            positions |> List.head
+    in
+    case maybeSnakeHead of
+        Nothing ->
+            currentHead
 
-adjustPosition: Position -> Direction -> Position
-adjustPosition pos dir = applyOffset pos (directionToOffset dir)
+        Just position ->
+            case direction of
+                Up ->
+                    { position | y = modBy boardSize (position.y - 1) }
 
+                Right ->
+                    { position | x = modBy boardSize (position.x + 1) }
+
+                Down ->
+                    { position | y = modBy boardSize (position.y + 1) }
+
+                Left ->
+                    { position | x = modBy boardSize (position.x - 1) }
+
+
+
+stripLast : List a -> List a
+stripLast list = List.take ((List.length list) - 1) list    
 
 toggleGameLoop : Model -> ( Model, Cmd Msg )
 toggleGameLoop ({ gameStarted } as model) =
@@ -147,16 +146,18 @@ keyDown key model =
   
 nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
-  let time_ = Time.posixToMillis time in
-  if time_ - model.lastUpdate >= 1000 then
-    updateSnake model
-    |> Setters.setTime time_
-    |> Setters.setLastUpdate time_
-    |> Update.none
-  else
-    time_
-    |> Setters.setTimeIn model
-    |> Update.none
+  let 
+    time_ = Time.posixToMillis time 
+  in
+    if time_ - model.lastUpdate >= 1000 then
+      updateSnake model
+      |> Setters.setTime time_
+      |> Setters.setLastUpdate time_
+      |> Update.none
+    else
+      time_
+      |> Setters.setTimeIn model
+      |> Update.none
 
 {-| Main update function, mainly used as a router for subfunctions -}
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -179,7 +180,7 @@ movingSquare model =
     (List.concat 
       (List.indexedMap (\y elem ->
         List.indexedMap (\x _ ->
-          (cell (List.member (x, y) model.snake.cases))
+          (cell (List.member {x=x, y=y} model.snake.cases))
         )
         elem
        ) 
