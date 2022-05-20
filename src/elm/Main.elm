@@ -9,7 +9,23 @@ import Time exposing (Posix)
 import Setters
 import Update
 import Json.Decode as Decode
-import List exposing (indexedMap)
+import List exposing (length)
+
+-- CONSTANT
+boardSize : Int
+boardSize = 40
+
+type alias Position =
+  { x : Int
+  , y : Int
+  }
+
+type Direction = Up | Down | Left | Right
+
+type alias Offset =
+  { dx : Int
+  , dy : Int
+  }
 
 {-| Got from JS side, and Model to modify -}
 type alias Flags = { now : Int }
@@ -19,15 +35,16 @@ type alias Model =
   , time : Int
   , coloredSquare : Int
   , snake : {
-        cases : List (Int, Int)
-      , direction : Int
+        cases : List Position
+      , direction : Direction
+      , head :  Position
     }
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [(0, 0)], direction = 0}
+  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}}
   |> Update.none
 
 {-| All your messages should go there -}
@@ -42,27 +59,64 @@ type Msg
  -|   Cmds. -}
 updateSnake : Model -> Model
 updateSnake model =
-  let snake = model.snake
-      newSnake = {
-          snake | cases = List.map(\(x,y) -> 
-            if snake.direction == 0 then 
-              (x,modBy 40 (y - 1))
-            else
-            if snake.direction == 1 then
-              (modBy 40 (x+1),y)
-            else 
-            if snake.direction == 2 then
-              (x,modBy 40 (y + 1))
-            else
-              (modBy 40 (x - 1),y)
+  let 
+      casesPrint = Debug.log "snake " snake
 
-          ) snake.cases
-
-        }
+      snake = model.snake
+      
+      newSnake = updateSnakeBody model
+      
   in
     {
-       model | snake = newSnake
+       model | snake = newSnake.snake --newSnake
     }
+
+updateSnakeBody: Model -> Model
+updateSnakeBody model = 
+  let 
+      currentHead =
+            model.snake.cases
+                |> List.head
+                |> Maybe.withDefault  {x= 0 , y = 0}
+      newHeadPosition = getNewHeadPosition currentHead model.snake.cases model.snake.direction
+      cases = movePositions model.snake.cases newHeadPosition 
+      newCases = if List.length model.snake.cases < 4 then cases else stripLast cases
+  in
+    {model |snake = {cases = newCases, head= currentHead, direction = model.snake.direction}}
+
+movePositions : List Position -> Position -> List Position
+movePositions positions newFirstPosition =
+    newFirstPosition :: positions
+
+
+getNewHeadPosition : Position -> List Position -> Direction -> Position
+getNewHeadPosition currentHead positions direction =
+    let
+        maybeSnakeHead =
+            positions |> List.head
+    in
+    case maybeSnakeHead of
+        Nothing ->
+            currentHead
+
+        Just position ->
+            case direction of
+                Up ->
+                    { position | y = modBy boardSize (position.y - 1) }
+
+                Right ->
+                    { position | x = modBy boardSize (position.x + 1) }
+
+                Down ->
+                    { position | y = modBy boardSize (position.y + 1) }
+
+                Left ->
+                    { position | x = modBy boardSize (position.x - 1) }
+
+
+
+stripLast : List a -> List a
+stripLast list = List.take ((List.length list) - 1) list    
 
 toggleGameLoop : Model -> ( Model, Cmd Msg )
 toggleGameLoop ({ gameStarted } as model) =
@@ -76,13 +130,13 @@ keyDown key model =
       newSnake = 
         case key of 
           ArrowUp -> 
-            { snake | direction = 0 }
+            { snake | direction = Up }
           ArrowDown -> 
-            { snake | direction = 2 }
+            { snake | direction = Down }
           ArrowLeft -> 
-            { snake | direction = 3 }
+            { snake | direction = Left }
           ArrowRight -> 
-            { snake | direction = 1 }
+            { snake | direction = Right }
           Space -> 
             snake
   in
@@ -91,16 +145,18 @@ keyDown key model =
   
 nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
-  let time_ = Time.posixToMillis time in
-  if time_ - model.lastUpdate >= 1000 then
-    updateSnake model
-    |> Setters.setTime time_
-    |> Setters.setLastUpdate time_
-    |> Update.none
-  else
-    time_
-    |> Setters.setTimeIn model
-    |> Update.none
+  let 
+    time_ = Time.posixToMillis time 
+  in
+    if time_ - model.lastUpdate >= 1000 then
+      updateSnake model
+      |> Setters.setTime time_
+      |> Setters.setLastUpdate time_
+      |> Update.none
+    else
+      time_
+      |> Setters.setTimeIn model
+      |> Update.none
 
 {-| Main update function, mainly used as a router for subfunctions -}
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -123,11 +179,11 @@ movingSquare model =
     (List.concat 
       (List.indexedMap (\y elem ->
         List.indexedMap (\x _ ->
-          (cell (List.member (x, y) model.snake.cases))
+          (cell (List.member {x=x, y=y} model.snake.cases))
         )
         elem
        ) 
-        (List.repeat 40 (List.repeat 40 0))
+        (List.repeat boardSize (List.repeat boardSize 0))
       )
     )
 
