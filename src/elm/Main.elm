@@ -2,7 +2,7 @@ module Main exposing (..)
 
 import Browser
 import Browser.Events
-import Html exposing (Html)
+import Html exposing (Html,h1)
 import Html.Attributes as Attributes
 import Html.Events as Events
 import Time exposing (Posix)
@@ -10,6 +10,7 @@ import Setters
 import Update
 import Json.Decode as Decode
 import List exposing (length)
+import Random
 
 -- CONSTANT
 boardSize : Int
@@ -40,12 +41,13 @@ type alias Model =
       , head :  Position
     }
   , apple : Position
+  , gameOver : Bool
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5}
+  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} False
   |> Update.none
 
 {-| All your messages should go there -}
@@ -54,22 +56,19 @@ type Msg
   = NextFrame Posix
   | ToggleGameLoop
   | KeyDown Key
+  | NewFoodPosition ( Int, Int )
 
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct 
  -|   Cmds. -}
 updateSnake : Model -> Model
 updateSnake model =
-  let 
-      casesPrint = Debug.log "snake " snake
-
-      snake = model.snake
-      
+  let
+      -- snake = model.snake
       newSnake = updateSnakeBody model
-      
   in
     {
-       model | snake = newSnake.snake --newSnake
+      model | snake = newSnake.snake --newSnake
     }
 
 updateSnakeBody: Model -> Model
@@ -80,10 +79,25 @@ updateSnakeBody model =
                 |> List.head
                 |> Maybe.withDefault  {x= 0 , y = 0}
       newHeadPosition = getNewHeadPosition currentHead model.snake.cases model.snake.direction
-      cases = movePositions model.snake.cases newHeadPosition 
-      newCases = if List.length model.snake.cases < 4 then cases else stripLast cases
+      cases = movePositions model.snake.cases newHeadPosition
+      newCases = if isSnakeEatApple model then cases else stripLast cases
   in
     {model |snake = {cases = newCases, head= currentHead, direction = model.snake.direction}}
+
+isSnakeEatApple : Model -> Bool
+isSnakeEatApple model = model.snake.head == model.apple
+
+collisionAvecLuiMeme : Model -> Bool
+collisionAvecLuiMeme model = 
+    let test = Debug.toString (model.snake.cases) in 
+    List.member model.snake.head (List.drop 1 model.snake.cases)
+
+collisionAvecMur : Model -> Bool
+collisionAvecMur model = False
+
+randomPosition : Random.Generator ( Int, Int )
+randomPosition =
+    Random.pair (Random.int 0 (boardSize - 1)) (Random.int 0 (boardSize - 1))
 
 movePositions : List Position -> Position -> List Position
 movePositions positions newFirstPosition =
@@ -149,11 +163,19 @@ nextFrame time model =
   let 
     time_ = Time.posixToMillis time 
   in
-    if time_ - model.lastUpdate >= 1000 then
-      updateSnake model
-      |> Setters.setTime time_
-      |> Setters.setLastUpdate time_
-      |> Update.none
+    if time_ - model.lastUpdate >= 100 then
+
+      if model.gameOver then
+        (model, Cmd.none)
+      else if collisionAvecMur model || collisionAvecLuiMeme model then 
+        ({ model | gameOver = True }, Cmd.none)
+      else if isSnakeEatApple model then 
+        (updateSnake model, Random.generate NewFoodPosition randomPosition )
+      else 
+        updateSnake model
+        |> Setters.setTime time_
+        |> Setters.setLastUpdate time_
+        |> Update.none
     else
       time_
       |> Setters.setTimeIn model
@@ -166,14 +188,14 @@ update msg model =
     ToggleGameLoop -> toggleGameLoop model
     KeyDown key -> keyDown key model
     NextFrame time -> nextFrame time model
+    NewFoodPosition ( x, y ) ->
+      ( { model | apple = { x = x, y = y } }, Cmd.none )
 
 {-| Manage all your view functions here. -}
 cell : Bool -> Model-> Int -> Int -> Html msg
 cell active model x y = 
   let 
     class = if active then "cell active" else if model.apple.x == x && model.apple.y == y then "apple" else "cell" 
-    xDebug = Debug.log "x " x
-    yDebug = Debug.log "y " y
   in
   Html.div [ Attributes.class class ] []
   
@@ -221,6 +243,7 @@ view model =
   Html.main_ []
     [ Html.img [ Attributes.src "/logo.svg" ] []
     , explanations model
+    , if model.gameOver then h1 [] [ Html.text "Game Over!" ] else h1 [] [ Html.text "score" ]
     , movingSquare model
     ]
 
