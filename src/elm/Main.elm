@@ -39,12 +39,13 @@ type alias Model =
       , direction : Direction
       , head :  Position
     }
+  , apple : Position
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}}
+  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5}
   |> Update.none
 
 {-| All your messages should go there -}
@@ -167,9 +168,13 @@ update msg model =
     NextFrame time -> nextFrame time model
 
 {-| Manage all your view functions here. -}
-cell : Bool -> Html msg
-cell active =
-  let class = if active then "cell active" else "cell" in
+cell : Bool -> Model-> Int -> Int -> Html msg
+cell active model x y = 
+  let 
+    class = if active then "cell active" else if model.apple.x == x && model.apple.y == y then "apple" else "cell" 
+    xDebug = Debug.log "x " x
+    yDebug = Debug.log "y " y
+  in
   Html.div [ Attributes.class class ] []
   
 
@@ -179,7 +184,7 @@ movingSquare model =
     (List.concat 
       (List.indexedMap (\y elem ->
         List.indexedMap (\x _ ->
-          (cell (List.member {x=x, y=y} model.snake.cases))
+          (cell (List.member {x=x, y=y} model.snake.cases)) model x y
         )
         elem
        ) 

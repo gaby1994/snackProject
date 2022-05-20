@@ -69,6 +69,10 @@ img {
   background: #bbb;
 }
 
+.apple {
+  background: rgb(187, 38, 38);
+}
+
 .actual-time {
   font-size: 1.2rem;
   font-weight: bold;
