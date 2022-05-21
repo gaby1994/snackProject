@@ -73,6 +73,10 @@ img {
   background: rgb(187, 38, 38);
 }
 
+.cherry {
+  background: rgb(138, 10, 218);
+}
+
 .actual-time {
   font-size: 1.2rem;
   font-weight: bold;

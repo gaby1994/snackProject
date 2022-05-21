@@ -9,7 +9,6 @@ import Time exposing (Posix)
 import Setters
 import Update
 import Json.Decode as Decode
-import List exposing (length)
 import Random
 
 -- CONSTANT
@@ -41,13 +40,15 @@ type alias Model =
       , head :  Position
     }
   , apple : Position
+  , cherry : Position
+  , compteurApparitionCherry : Int
   , gameOver : Bool
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} False
+  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 False
   |> Update.none
 
 {-| All your messages should go there -}
@@ -56,7 +57,8 @@ type Msg
   = NextFrame Posix
   | ToggleGameLoop
   | KeyDown Key
-  | NewFoodPosition ( Int, Int )
+  | NewApplePosition ( Int, Int )
+  | NewCherryPosition ( Int, Int )
 
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct 
@@ -64,7 +66,7 @@ type Msg
 updateSnake : Model -> Model
 updateSnake model =
   let
-      -- snake = model.snake
+      snake = model.snake
       newSnake = updateSnakeBody model
   in
     {
@@ -87,10 +89,12 @@ updateSnakeBody model =
 isSnakeEatApple : Model -> Bool
 isSnakeEatApple model = model.snake.head == model.apple
 
+isSnakeEatCherry : Model -> Bool
+isSnakeEatCherry model = model.snake.head == model.cherry
+
 collisionAvecLuiMeme : Model -> Bool
-collisionAvecLuiMeme model = 
-    let test = Debug.toString (model.snake.cases) in 
-    List.member model.snake.head (List.drop 1 model.snake.cases)
+collisionAvecLuiMeme model = False
+    -- List.member model.snake.head (List.drop 1 model.snake.cases)
 
 collisionAvecMur : Model -> Bool
 collisionAvecMur model = False
@@ -102,7 +106,6 @@ randomPosition =
 movePositions : List Position -> Position -> List Position
 movePositions positions newFirstPosition =
     newFirstPosition :: positions
-
 
 getNewHeadPosition : Position -> List Position -> Direction -> Position
 getNewHeadPosition currentHead positions direction =
@@ -127,8 +130,6 @@ getNewHeadPosition currentHead positions direction =
 
                 Left ->
                     { position | x = modBy boardSize (position.x - 1) }
-
-
 
 stripLast : List a -> List a
 stripLast list = List.take ((List.length list) - 1) list    
@@ -157,11 +158,10 @@ keyDown key model =
   in
     ({ model | snake = newSnake }, Cmd.none)
 
-  
 nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
-  let 
-    time_ = Time.posixToMillis time 
+  let
+    time_ = Time.posixToMillis time
   in
     if time_ - model.lastUpdate >= 100 then
 
@@ -170,16 +170,24 @@ nextFrame time model =
       else if collisionAvecMur model || collisionAvecLuiMeme model then 
         ({ model | gameOver = True }, Cmd.none)
       else if isSnakeEatApple model then 
-        (updateSnake model, Random.generate NewFoodPosition randomPosition )
-      else 
+        (updateSnake model, Random.generate NewApplePosition randomPosition )
+      else if isSnakeEatCherry model then 
+        (updateSnake model, Random.generate NewCherryPosition randomPosition )
+      else
         updateSnake model
-        |> Setters.setTime time_
-        |> Setters.setLastUpdate time_
-        |> Update.none
+          |> Setters.setTime time_
+          |> Setters.setLastUpdate time_
+          |> Update.none
+
     else
-      time_
-      |> Setters.setTimeIn model
-      |> Update.none
+      if model.compteurApparitionCherry /= 500 then
+        ({model | compteurApparitionCherry = model.compteurApparitionCherry + 1}, Cmd.none )
+      else if model.compteurApparitionCherry == 500 then
+        ({model | compteurApparitionCherry = 0}, Random.generate NewCherryPosition randomPosition)
+      else 
+        time_
+        |> Setters.setTimeIn model
+        |> Update.none
 
 {-| Main update function, mainly used as a router for subfunctions -}
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -188,17 +196,20 @@ update msg model =
     ToggleGameLoop -> toggleGameLoop model
     KeyDown key -> keyDown key model
     NextFrame time -> nextFrame time model
-    NewFoodPosition ( x, y ) ->
+    NewApplePosition ( x, y ) ->
       ( { model | apple = { x = x, y = y } }, Cmd.none )
+    NewCherryPosition ( x, y ) ->
+      ( { model | cherry = { x = x, y = y } }, Cmd.none )
 
 {-| Manage all your view functions here. -}
 cell : Bool -> Model-> Int -> Int -> Html msg
 cell active model x y = 
   let 
-    class = if active then "cell active" else if model.apple.x == x && model.apple.y == y then "apple" else "cell" 
+    class = if active then "cell active" 
+            else if model.apple.x == x && model.apple.y == y then "apple" 
+            else if model.cherry.x == x && model.cherry.y == y then "cherry"  else "cell" 
   in
   Html.div [ Attributes.class class ] []
-  
 
 movingSquare : Model -> Html msg
 movingSquare model =
