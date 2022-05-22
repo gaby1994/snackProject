@@ -73,9 +73,10 @@ updateSnake model =
   let
       snake = model.snake
       newSnake = updateSnakeBody model
+      newScore = setScore model
   in
     {
-      model | snake = newSnake.snake --newSnake
+      model | snake = newSnake.snake, score = newScore.score --newSnake
     }
 
 updateSnakeBody: Model -> Model
@@ -89,7 +90,7 @@ updateSnakeBody model =
       cases = movePositions model.snake.cases newHeadPosition
       newCases = if isSnakeEatApple model then cases else stripLast cases
   in
-    {model |snake = {cases = newCases, head= currentHead, direction = model.snake.direction}}
+    {model |snake = {cases = newCases, head= currentHead, direction = model.snake.direction} }
 
 isSnakeEatApple : Model -> Bool
 isSnakeEatApple model = model.snake.head == model.apple
@@ -106,13 +107,17 @@ collisionAvecMur model = False
 
 setScore : Model -> Model
 setScore model = 
-  if isSnakeEatApple model then
-    {model | score = model.score + 100 + toSecond utc (millisToPosix model.time)}
-  else
-    if isSnakeEatCherry model then
-      {model | score = model.score + 300}
+  let 
+    timeUsed = toSecond utc (millisToPosix model.time) 
+  in
+  
+    if isSnakeEatApple model then
+      {model | score = model.score + 100}
     else
-      {model | score = model.score}
+      if isSnakeEatCherry model then
+        {model | score = model.score + 300}
+      else
+        {model | score = model.score + 10 * timeUsed}
 
 randomPosition : Random.Generator ( Int, Int )
 randomPosition =
@@ -269,7 +274,7 @@ view model =
   Html.main_ []
     [ Html.img [ Attributes.src "/logo.svg" ] []
     , explanations model
-    , if model.gameOver then h1 [] [ Html.text "Game Over!" ] else h1 [] [ Html.text "score" ]
+    , if model.gameOver then h1 [] [ Html.text "Game Over!" ] else h1 [] [ Html.text (String.append "score : " (String.fromInt model.score))]
     , movingSquare model
     ]
 
