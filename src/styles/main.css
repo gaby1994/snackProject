@@ -85,6 +85,10 @@ img {
   align-items: baseline;
 }
 
+div {
+  white-space: nowrap;
+}
+
 .btn {
   padding: 12px 24px;
   font-size: 1.2rem;
