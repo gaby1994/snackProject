@@ -91,9 +91,6 @@ hitTheWall model =
 updateSnake : Model -> Model
 updateSnake model =
   let
-      test =  Debug.log "wall " model.randomWall
-
-      test2 = Debug.log "passs " model.snake
       snake = model.snake
       newSnake = updateSnakeBody model
   in
@@ -351,11 +348,6 @@ explanations ({ gameStarted } as model) =
 updateWallOptions : Model -> Bool -> Model
 updateWallOptions model isChecked= 
   {model | wallOn = isChecked}
-
-type alias Checkbox = 
-  {
-    isChecked : Bool
-  }
 
 gameOptions : Model -> Html Msg
 gameOptions model =
