@@ -111,7 +111,7 @@ collisionWithRandomWall model = False
 
 randomPosition : Random.Generator ( Int, Int )
 randomPosition =
-    Random.pair (Random.int 0 (boardSize - 1)) (Random.int 0 (boardSize - 1))
+    Random.pair (Random.int 1 (boardSize - 2)) (Random.int 1 (boardSize - 2))
 
 movePositions : List Position -> Position -> List Position
 movePositions positions newFirstPosition =
@@ -238,14 +238,6 @@ wallSquares active x y =
               else ""
   in
     Html.div [ Attributes.class class ] []
-  
-  --Html.div [ Attributes.class "grid" ]
-  --++ (
-    --case index of 
-    --_ -> (cell (List.member {x=0, y=index}))
-    --Loop.while ((<) boardSize 0 ((+) 1))
-  --)
-
 
 movingSquare : Model -> Html msg
 movingSquare model =
