@@ -13,21 +13,27 @@ import Json.Decode as Decode
 import Random
 
 -- CONSTANT
-boardSize : Int
-boardSize = 40
+defaultBoardSize : Int
+defaultBoardSize = 40
+type OtherBoard = Board20 | Board10
 
 type alias Position =
   { x : Int
   , y : Int
   }
 
+type alias BoardSize =
+  { size : Int
+  }
 
 type Direction = Up | Down | Left | Right
 
 {-| Got from JS side, and Model to modify -}
 type alias Flags = { now : Int }
 type alias Model =
-  { gameStarted : Bool
+  { 
+  boardSize : Int
+  , gameStarted : Bool
   , lastUpdate : Int
   , time : Int
   , coloredSquare : Int
@@ -46,10 +52,11 @@ type alias Model =
   , randomWall : List Position
   }
 
+
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= boardSize//2 , y = boardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 0 False False False [{x=-1,y=-1}]
+  |> \time -> Model defaultBoardSize False time time 0 {cases = [{x= defaultBoardSize//2 , y = defaultBoardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 0 False False False [{x=-1,y=-1}]
   |> Update.none  
 
 
@@ -64,6 +71,7 @@ type Msg
   | WallIsChecked Bool
   | RandomWallIsChecked Bool 
   | ExtraWallUpdate ( Int, Int )
+  | UpdateBoardSize Int
 
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct 
@@ -73,7 +81,7 @@ hitTheWall : Model -> Bool
 hitTheWall model = 
   case model.snake.cases of 
     h :: t ->
-      if h.x < 1 || h.y < 1 || h.x == boardSize-1 || h.y == boardSize-1 then
+      if h.x < 1 || h.y < 1 || h.x == model.boardSize-1 || h.y == model.boardSize-1 then
        True
       else 
         False 
@@ -108,7 +116,7 @@ updateSnakeBody model =
             model.snake.cases
                 |> List.head
                 |> Maybe.withDefault  {x= 0 , y = 0}
-      newHeadPosition = getNewHeadPosition currentHead model.snake.cases model.snake.direction
+      newHeadPosition = getNewHeadPosition model currentHead model.snake.cases model.snake.direction
       cases = movePositions model.snake.cases newHeadPosition
 
       newCases = 
@@ -136,16 +144,16 @@ collisionWithRandomWall model =  List.member model.snake.head model.randomWall
 randomPosition : Model -> Random.Generator ( Int, Int )
 randomPosition model =
     if model.wallOn then 
-      Random.pair (Random.int 1 (boardSize - 2)) (Random.int 1 (boardSize - 2))
+      Random.pair (Random.int 1 (model.boardSize - 2)) (Random.int 1 (model.boardSize - 2))
     else 
-      Random.pair (Random.int 0 (boardSize - 1)) (Random.int 0 (boardSize - 1))
+      Random.pair (Random.int 0 (model.boardSize - 1)) (Random.int 0 (model.boardSize - 1))
 
 movePositions : List Position -> Position -> List Position
 movePositions positions newFirstPosition =
     newFirstPosition :: positions
 
-getNewHeadPosition : Position -> List Position -> Direction -> Position
-getNewHeadPosition currentHead positions direction =
+getNewHeadPosition : Model -> Position -> List Position -> Direction -> Position
+getNewHeadPosition model currentHead positions direction =
     let
         maybeSnakeHead =
             positions |> List.head
@@ -157,16 +165,16 @@ getNewHeadPosition currentHead positions direction =
         Just position ->
             case direction of
                 Up ->
-                    { position | y = modBy boardSize (position.y - 1) }
+                    { position | y = modBy model.boardSize (position.y - 1) }
 
                 Right ->
-                    { position | x = modBy boardSize (position.x + 1) }
+                    { position | x = modBy model.boardSize (position.x + 1) }
 
                 Down ->
-                    { position | y = modBy boardSize (position.y + 1) }
+                    { position | y = modBy model.boardSize (position.y + 1) }
 
                 Left ->
-                    { position | x = modBy boardSize (position.x - 1) }
+                    { position | x = modBy model.boardSize (position.x - 1) }
 
 stripLast : List a -> List a
 stripLast list = List.take ((List.length list) - 1) list    
@@ -245,6 +253,8 @@ nextFrame time model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
+    UpdateBoardSize boardSize ->
+        ({ model | boardSize = boardSize, snake = { cases = [{x=boardSize//2,y=boardSize//2}] , direction = model.snake.direction, head = model.snake.head } }, Cmd.none)
     ToggleGameLoop -> toggleGameLoop model
     KeyDown key -> keyDown key model
     NextFrame time -> nextFrame time model
@@ -280,7 +290,7 @@ cell active model x y =
   
   let class = if active then "cell active" 
             else if model.apple.x == x && model.apple.y == y then "apple" 
-            else if model.wallOn && (y == 0 || x ==0 || y == boardSize-1 || x ==boardSize-1) then "wall"
+            else if model.wallOn && (y == 0 || x ==0 || y == model.boardSize-1 || x ==model.boardSize-1) then "wall"
             else if model.randomWallOn && List.member {x=x,y=y} model.randomWall then "wall"
             else if model.cherry.x == x && model.cherry.y == y then "cherry"  else "cell" 
   in
@@ -288,17 +298,18 @@ cell active model x y =
 
 movingSquare : Model -> Html msg
 movingSquare model =
-  Html.div [ Attributes.class "grid" ]
+  Html.div [  if model.boardSize == 40 then Attributes.class "grid" else Attributes.class "grid20"]
     (List.concat 
       (List.indexedMap (\y elem ->
         List.indexedMap (\x _ ->
           (cell (List.member {x=x, y=y} model.snake.cases)) model x y
         )
         elem
-       ) 
-        (List.repeat boardSize (List.repeat boardSize 0))
+      ) 
+        (List.repeat model.boardSize (List.repeat model.boardSize 0))
       )
     )
+
 
 actualTime : Model -> Html msg
 actualTime model =
@@ -360,10 +371,25 @@ gameOptions model =
         Html.label [] [Html.text "Random wall on"]
         ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.randomWallOn, onClick(RandomWallIsChecked model.randomWallOn)  ] []
       ]
-      , Html.div []
+      , 
+      if List.length model.snake.cases > 2  then 
+        Html.div [] []
+      else if  model.gameStarted then 
+        Html.div [] []
+      else 
+        Html.div []
       [
-        Html.label [] [Html.text "Grid size: 40"]
-        ,Html.input [ Attributes.type_ "", Attributes.checked model.randomWallOn, onClick(RandomWallIsChecked model.randomWallOn)  ] []
+          Html.div []
+          [
+            Html.label [] [Html.text "Grid size: 40"]
+            ,Html.input [ Attributes.type_ "radio", onClick(UpdateBoardSize 40)  ] []
+          ]
+        ,
+          Html.div []
+          [
+            Html.label [] [Html.text "Grid size: 20"]
+            ,Html.input [ Attributes.type_ "radio" , onClick(UpdateBoardSize 20) ] []
+          ]
       ]
     ]
 
