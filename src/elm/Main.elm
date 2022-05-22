@@ -210,9 +210,7 @@ nextFrame time model =
       if model.gameOver then
         (model, Cmd.none)
       else if collisionWithRandomWall model && List.length model.snake.cases < 2 then 
-        ({ model | gameOver = True }, Cmd.none)
-      --else if collisionWithRandomWall model && List.length model.snake.cases > 1 then 
-      --  (updateSnake model, Cmd.none)
+        ({ model | gameOver = True }, Cmd.none)      
       else if model.wallOn && (hitTheWall model || hitTheWall model) then 
         ({ model | gameOver = True }, Cmd.none)
       else if isSnakeEatApple model then 
