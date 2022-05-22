@@ -143,8 +143,17 @@ isSnakeEatCherry : Model -> Bool
 isSnakeEatCherry model = model.snake.head == model.cherry
 
 collisionAvecLuiMeme : Model -> Bool
-collisionAvecLuiMeme model = False
-    -- List.member model.snake.head (List.drop 1 model.snake.cases)
+collisionAvecLuiMeme model = 
+    if List.length model.snake.cases > 2 then 
+      case model.snake.cases of 
+      h :: t ->
+        if  List.member model.snake.head t then
+        True
+        else False
+      _ ->
+        False  
+    else False
+
 
 collisionWithRandomWall : Model -> Bool
 collisionWithRandomWall model =  List.member model.snake.head model.randomWall
@@ -226,6 +235,8 @@ nextFrame time model =
 
       if model.gameOver then
         (model, Cmd.none)
+      else if collisionAvecLuiMeme model then 
+        ({ model | gameOver = True }, Cmd.none)   
       else if collisionWithRandomWall model && List.length model.snake.cases < 2 then 
         ({ model | gameOver = True }, Cmd.none)      
       else if model.wallOn && (hitTheWall model || hitTheWall model) then 
