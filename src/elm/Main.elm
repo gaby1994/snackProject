@@ -382,17 +382,20 @@ gameOptions : Model -> Html Msg
 gameOptions model =
     Html.div[]
     [
-      Html.div []
-      [
-        Html.label [] [Html.text "Wall on"]
-        ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.wallOn, onClick(WallIsChecked model.wallOn)  ] []
-      ],
-      Html.div []
-      [
-        Html.label [] [Html.text "Random wall on"]
-        ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.randomWallOn, onClick(RandomWallIsChecked model.randomWallOn)  ] []
-      ]
-      , 
+      if  model.gameStarted then 
+        Html.div [] []
+      else
+        Html.div []
+        [
+          Html.label [] [Html.text "Wall on"]
+          ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.wallOn, onClick(WallIsChecked model.wallOn)  ] []
+        ],
+        Html.div []
+        [
+          Html.label [] [Html.text "Random wall on"]
+          ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.randomWallOn, onClick(RandomWallIsChecked model.randomWallOn)  ] []
+        ]
+        , 
       if List.length model.snake.cases > 2  then 
         Html.div [] []
       else if  model.gameStarted then 
