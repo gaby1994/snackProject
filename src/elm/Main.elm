@@ -58,7 +58,7 @@ type alias Model =
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model defaultBoardSize False time time 0 {cases = [{x= defaultBoardSize//2 , y = defaultBoardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 15} 0 0 False 0 0 False False False [{x=-1,y=-1}] --{x= 15 , y = 30}
+  |> \time -> Model defaultBoardSize False time time 0 {cases = [{x= defaultBoardSize//2 , y = defaultBoardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 15} 0 0 False 0 0 False False [{x=-1,y=-1}] --{x= 15 , y = 30}
   |> Update.none
 
 {-| All your messages should go there -}
@@ -242,7 +242,7 @@ nextFrame time model =
 
       else if model.cooldownCherry == 6000 then
         if model.cherry == {x= -1 , y = -1} then 
-          (model, Random.generate NewCherryPosition randomPosition)
+          (model, Random.generate NewCherryPosition (randomPosition model))
         else
           if model.tempsAvantAugmentationScore == 50 then
             if model.tempsApparitionCherry /= 500 then
