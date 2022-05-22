@@ -47,6 +47,8 @@ type alias Model =
   , cooldownCherry : Int
   , tempsApparitionCherry : Int
   , gameOver : Bool
+  , score : Int
+  , tempsAvantAugmentationScore : Int
   , wallOn : Bool
   , randomWallOn : Bool
   , randomWall : List Position
@@ -56,9 +58,8 @@ type alias Model =
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model defaultBoardSize False time time 0 {cases = [{x= defaultBoardSize//2 , y = defaultBoardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 0 False False False [{x=-1,y=-1}]
-  |> Update.none  
-
+  |> \time -> Model defaultBoardSize False time time 0 {cases = [{x= defaultBoardSize//2 , y = defaultBoardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 15} 0 0 False 0 0 False False False [{x=-1,y=-1}] --{x= 15 , y = 30}
+  |> Update.none
 
 {-| All your messages should go there -}
 type Key = ArrowUp | ArrowRight | ArrowDown | ArrowLeft | Space
@@ -93,9 +94,10 @@ updateSnake model =
   let
       snake = model.snake
       newSnake = updateSnakeBody model
+      newScore = setScore model
   in
     {
-      model | snake = newSnake.snake --newSnake
+      model | snake = newSnake.snake, score = newScore.score
     }
 
 collisionWithWallUpdateSnake : List Position -> List Position
@@ -123,6 +125,16 @@ updateSnakeBody model =
       
   in
     {model |snake = {cases = newCases, head= newHeadPosition, direction = model.snake.direction}}
+
+setScore : Model -> Model
+setScore model = 
+    if isSnakeEatApple model then
+      {model | score = model.score + 100}
+    else
+      if isSnakeEatCherry model then
+        {model | score = model.score + 100}
+      else
+        model
 
 isSnakeEatApple : Model -> Bool
 isSnakeEatApple model = model.snake.head == model.apple
@@ -228,23 +240,34 @@ nextFrame time model =
           |> Setters.setLastUpdate time_
           |> Update.none
 
-    else
-      if model.cooldownCherry == 6000 then
-
+      else if model.cooldownCherry == 6000 then
         if model.cherry == {x= -1 , y = -1} then 
-          (model, Random.generate NewCherryPosition (randomPosition model) )
-        else 
-          if model.tempsApparitionCherry /= 500 then
-            ({model | tempsApparitionCherry = model.tempsApparitionCherry + 1}, Cmd.none)
-          else
-            ({model | tempsApparitionCherry = 0, cooldownCherry = 0, cherry = {x= -1 , y = -1} }, Cmd.none)
-      else 
-        if model.cooldownCherry /= 6000 then
-          ({model | cooldownCherry = model.cooldownCherry + 1}, Cmd.none )
+          (model, Random.generate NewCherryPosition randomPosition)
         else
-          time_
-          |> Setters.setTimeIn model
-          |> Update.none 
+          if model.tempsAvantAugmentationScore == 50 then
+            if model.tempsApparitionCherry /= 500 then
+              ({model | tempsApparitionCherry = model.tempsApparitionCherry + 1, tempsAvantAugmentationScore = 0, score = model.score + 10}, Cmd.none)
+            else
+              ({model | tempsApparitionCherry = 0, cooldownCherry = 0, cherry = {x= -1 , y = -1}, tempsAvantAugmentationScore = 0, score = model.score + 10}, Cmd.none)
+          else
+            if model.tempsApparitionCherry /= 500 then
+              ({model | tempsApparitionCherry = model.tempsApparitionCherry + 1, tempsAvantAugmentationScore = model.tempsAvantAugmentationScore + 1}, Cmd.none)
+            else
+              ({model | tempsApparitionCherry = 0, cooldownCherry = 0, cherry = {x= -1 , y = -1}, tempsAvantAugmentationScore = model.tempsAvantAugmentationScore + 1}, Cmd.none)
+
+
+      else if model.cooldownCherry /= 6000 then
+        if model.tempsAvantAugmentationScore /= 50 then
+          ({model | cooldownCherry = model.cooldownCherry + 1, tempsAvantAugmentationScore = model.tempsAvantAugmentationScore + 1}, Cmd.none)
+        else if model.tempsAvantAugmentationScore == 50 then
+          ({model | cooldownCherry = model.cooldownCherry + 1, tempsAvantAugmentationScore = 0, score = model.score + 10}, Cmd.none)
+        else
+          ({model | cooldownCherry = model.cooldownCherry + 1}, Cmd.none)        
+    
+    else
+        time_
+        |> Setters.setTimeIn model
+        |> Update.none 
 
 {-| Main update function, mainly used as a router for subfunctions -}
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -312,20 +335,26 @@ actualTime : Model -> Html msg
 actualTime model =
   Html.div [ Attributes.class "actual-time" ]
     [ 
-      Html.text "Actual time"
+      Html.text "temps actuel : "
         , model.time
         |> String.fromInt
         |> Html.text
         |> List.singleton
         |> Html.code []
-      , Html.text "temps avant apparition du cherry : "
+      , Html.text "temps avant apparition de la cerise : "
         , (6000 - model.cooldownCherry)
         |> String.fromInt
         |> Html.text
         |> List.singleton
         |> Html.code []
-      , Html.text "temps restant avant reinitialisation du cherry : "
+      , Html.text "temps restant avant réinitialisation de la cerise : "
         , (500 - model.tempsApparitionCherry)
+        |> String.fromInt
+        |> Html.text
+        |> List.singleton
+        |> Html.code []
+      , Html.text "temps restant avant augmentation du score : "
+        , (50 - model.tempsAvantAugmentationScore)
         |> String.fromInt
         |> Html.text
         |> List.singleton
@@ -342,7 +371,7 @@ explanations ({ gameStarted } as model) =
     , Html.button
       [ Events.onClick ToggleGameLoop, Attributes.class "btn" ]
       [ Html.text (String.join " " [word, "game loop"]) ]
-    , if model.gameOver then Html.h2 [] [ Html.text "Game Over!" ] else Html.h2 [] [ Html.text "score : 0"  ]
+    , if model.gameOver then h1 [] [ Html.text "Game Over!" ] else h1 [] [ Html.text (String.append "score : " (String.fromInt model.score))]
     ]
 
 updateWallOptions : Model -> Bool -> Model
