@@ -402,15 +402,11 @@ gameOptions model =
       [
           Html.div []
           [
-            Html.label [] [Html.text "Grid size: 40"]
-            ,Html.input [ Attributes.type_ "radio", onClick(UpdateBoardSize 40)  ] []
+            Html.p [] [Html.text "Grid size: "]
+            ,Html.button [ onClick(UpdateBoardSize 40)  ] [ Html.text "40"]
+            ,Html.button [ onClick(UpdateBoardSize 20) ] [Html.text "20"]
           ]
-        ,
-          Html.div []
-          [
-            Html.label [] [Html.text "Grid size: 20"]
-            ,Html.input [ Attributes.type_ "radio" , onClick(UpdateBoardSize 20) ] []
-          ]
+
       ]
     ]
 
