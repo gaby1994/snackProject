@@ -60,13 +60,30 @@ img {
   background: white;
 }
 
-.cell {
+.grid20 {
+  display: grid;
+  width: 600px;
+  height: 600px;
+  grid-template-rows: repeat(20, 1fr);
+  grid-template-columns: repeat(20, 1fr);
   border: 2px solid #888;
+  margin: 24px auto;
+  background: white;
+}
+
+.cell {
+  border: 2px solid rgb(136, 136, 136);
   background: #f5f5f5;
 }
 
+.wall {
+  border: 2px solid #888;
+  background: rgb(76, 75, 75);
+}
+
 .active {
-  background: #bbb;
+  border: 1px solid rgb(4, 119, 29);
+  background: rgb(5, 163, 39);
 }
 
 .apple {
