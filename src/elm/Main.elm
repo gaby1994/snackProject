@@ -45,7 +45,7 @@ type alias Model =
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= boardSize//2 , y = boardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 False False
+  |> \time -> Model False time time 0 {cases = [{x= boardSize//2 , y = boardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 0 False False
   |> Update.none
 
 {-| All your messages should go there -}
@@ -65,8 +65,7 @@ hitTheWall : Model -> Bool
 hitTheWall model = 
   case model.snake.cases of 
     h :: t ->
-      if h.x < 1 || h.y < 1 || h.x == boardSize || h.y == boardSize then
-        --(HitTheWall, Just h)
+      if h.x < 1 || h.y < 1 || h.x == boardSize-1 || h.y == boardSize-1 then
        True
       else 
         False
@@ -227,9 +226,27 @@ cell active model x y =
   let 
     class = if active then "cell active" 
             else if model.apple.x == x && model.apple.y == y then "apple" 
+            else if  y == 0 || x ==0 || y == boardSize-1 || x ==boardSize-1 then "wall"
             else if model.cherry.x == x && model.cherry.y == y then "cherry"  else "cell" 
   in
   Html.div [ Attributes.class class ] []
+
+wallSquares : Bool -> Int -> Int -> Html msg
+wallSquares active x y = 
+  let
+      class = if active then "cell active"
+              else if x == 0 || y == 0 || x == boardSize || y == boardSize then "cell"
+              else ""
+  in
+    Html.div [ Attributes.class class ] []
+  
+  --Html.div [ Attributes.class "grid" ]
+  --++ (
+    --case index of 
+    --_ -> (cell (List.member {x=0, y=index}))
+    --Loop.while ((<) boardSize 0 ((+) 1))
+  --)
+
 
 movingSquare : Model -> Html msg
 movingSquare model =
