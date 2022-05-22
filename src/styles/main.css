@@ -71,7 +71,8 @@ img {
 }
 
 .active {
-  background: #bbb;
+  border: 1px solid rgb(4, 119, 29);
+  background: rgb(5, 163, 39);
 }
 
 .apple {

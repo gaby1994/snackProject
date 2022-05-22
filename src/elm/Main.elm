@@ -68,8 +68,7 @@ hitTheWall model =
       if h.x < 1 || h.y < 1 || h.x == boardSize-1 || h.y == boardSize-1 then
        True
       else 
-        False
-      
+        False 
     _ ->
       False
 
@@ -107,8 +106,8 @@ collisionAvecLuiMeme : Model -> Bool
 collisionAvecLuiMeme model = False
     -- List.member model.snake.head (List.drop 1 model.snake.cases)
 
-collisionAvecMur : Model -> Bool
-collisionAvecMur model = False
+collisionWithRandomWall : Model -> Bool
+collisionWithRandomWall model = False
 
 randomPosition : Random.Generator ( Int, Int )
 randomPosition =
