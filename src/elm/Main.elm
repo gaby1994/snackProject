@@ -238,7 +238,7 @@ actualTime : Model -> Html msg
 actualTime model =
   Html.div [ Attributes.class "actual-time" ]
     [ 
-      Html.text "Actual time"
+      Html.text "temps actuel : "
         , model.time
         |> String.fromInt
         |> Html.text

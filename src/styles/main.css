@@ -77,16 +77,13 @@ img {
   background: rgb(138, 10, 218);
 }
 
-.actual-time {
+.actual-time ::after {
   font-size: 1.2rem;
   font-weight: bold;
-  display: flex;
   gap: 6px;
   align-items: baseline;
-}
-
-div {
-  white-space: nowrap;
+  content: '\A'; 
+  white-space: pre;
 }
 
 .btn {
