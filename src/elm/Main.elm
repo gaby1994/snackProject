@@ -10,6 +10,10 @@ import Setters
 import Update
 import Json.Decode as Decode
 import Random
+import Time exposing (toSecond)
+import Time exposing (millisToPosix)
+import Time exposing (utc)
+import Update exposing (none)
 
 -- CONSTANT
 boardSize : Int
@@ -43,12 +47,13 @@ type alias Model =
   , cherry : Position
   , compteurApparitionCherry : Int
   , gameOver : Bool
+  , score : Int
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 False
+  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 False 0
   |> Update.none
 
 {-| All your messages should go there -}
@@ -98,6 +103,16 @@ collisionAvecLuiMeme model = False
 
 collisionAvecMur : Model -> Bool
 collisionAvecMur model = False
+
+setScore : Model -> Model
+setScore model = 
+  if isSnakeEatApple model then
+    {model | score = model.score + 100 + toSecond utc (millisToPosix model.time)}
+  else
+    if isSnakeEatCherry model then
+      {model | score = model.score + 300}
+    else
+      {model | score = model.score}
 
 randomPosition : Random.Generator ( Int, Int )
 randomPosition =
