@@ -6,6 +6,7 @@ import Html exposing (Html,h1)
 import Html.Attributes as Attributes
 import Html.Events as Events
 import Time exposing (Posix)
+import Html.Events exposing (onClick)
 import Setters
 import Update
 import Json.Decode as Decode
@@ -19,6 +20,7 @@ type alias Position =
   { x : Int
   , y : Int
   }
+
 
 type Direction = Up | Down | Left | Right
 
@@ -56,6 +58,7 @@ type Msg
   | KeyDown Key
   | NewApplePosition ( Int, Int )
   | NewCherryPosition ( Int, Int )
+  | WallIsChecked Bool
 
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct 
@@ -75,7 +78,6 @@ hitTheWall model =
 updateSnake : Model -> Model
 updateSnake model =
   let
-      casesPrint = Debug.log "snake " snake
       snake = model.snake
       newSnake = updateSnakeBody model
   in
@@ -109,9 +111,12 @@ collisionAvecLuiMeme model = False
 collisionWithRandomWall : Model -> Bool
 collisionWithRandomWall model = False
 
-randomPosition : Random.Generator ( Int, Int )
-randomPosition =
-    Random.pair (Random.int 1 (boardSize - 2)) (Random.int 1 (boardSize - 2))
+randomPosition : Model -> Random.Generator ( Int, Int )
+randomPosition model =
+    if model.wallOn then 
+      Random.pair (Random.int 1 (boardSize - 2)) (Random.int 1 (boardSize - 2))
+    else 
+      Random.pair (Random.int 0 (boardSize - 1)) (Random.int 0 (boardSize - 1))
 
 movePositions : List Position -> Position -> List Position
 movePositions positions newFirstPosition =
@@ -177,10 +182,10 @@ nextFrame time model =
 
       if model.gameOver then
         (model, Cmd.none)
-      else if hitTheWall model || hitTheWall model then 
+      else if model.wallOn && (hitTheWall model || hitTheWall model) then 
         ({ model | gameOver = True }, Cmd.none)
       else if isSnakeEatApple model then 
-        (updateSnake model, Random.generate NewApplePosition randomPosition )
+        (updateSnake model, Random.generate NewApplePosition (randomPosition model))
       else if isSnakeEatCherry model then 
         ({model | snake = (updateSnake model).snake, cherry = {x= -2 , y = -2}, tempsApparitionCherry = 500}, Cmd.none)
       else
@@ -193,7 +198,7 @@ nextFrame time model =
       if model.cooldownCherry == 6000 then
 
         if model.cherry == {x= -1 , y = -1} then 
-          (model, Random.generate NewCherryPosition randomPosition)
+          (model, Random.generate NewCherryPosition (randomPosition model) )
         else 
           if model.tempsApparitionCherry /= 500 then
             ({model | tempsApparitionCherry = model.tempsApparitionCherry + 1}, Cmd.none)
@@ -218,6 +223,11 @@ update msg model =
       ( { model | apple = { x = x, y = y } }, Cmd.none )
     NewCherryPosition ( x, y ) ->
       ( { model | cherry = { x = x, y = y } }, Cmd.none )
+    WallIsChecked  isChecked ->
+      if isChecked == True then 
+        ({ model | wallOn = False }, Cmd.none )
+      else 
+        ({ model | wallOn = True }, Cmd.none )
 
 {-| Manage all your view functions here. -}
 cell : Bool -> Model-> Int -> Int -> Html msg
@@ -225,7 +235,7 @@ cell active model x y =
   let 
     class = if active then "cell active" 
             else if model.apple.x == x && model.apple.y == y then "apple" 
-            else if  y == 0 || x ==0 || y == boardSize-1 || x ==boardSize-1 then "wall"
+            else if model.wallOn && (y == 0 || x ==0 || y == boardSize-1 || x ==boardSize-1) then "wall"
             else if model.cherry.x == x && model.cherry.y == y then "cherry"  else "cell" 
   in
   Html.div [ Attributes.class class ] []
@@ -290,12 +300,31 @@ explanations ({ gameStarted } as model) =
     , if model.gameOver then Html.h2 [] [ Html.text "Game Over!" ] else Html.h2 [] [ Html.text "score : 0"  ]
     ]
 
+updateWallOptions : Model -> Bool -> Model
+updateWallOptions model isChecked= 
+  {model | wallOn = isChecked}
+
+type alias Checkbox = 
+  {
+    isChecked : Bool
+  }
+
+gameOptions : Model -> Html Msg
+gameOptions model =
+    Html.div []
+    [
+      Html.label [] [Html.text "Wall on"]
+      ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.wallOn, onClick(WallIsChecked model.wallOn)  ] []
+    ]
+
 {-| Main view functions, composing all functions in one -}
 view : Model -> Html Msg
 view model =
   Html.main_ []
-    [ Html.img [ Attributes.src "/logo.svg" ] []
+    [ 
+      Html.img [ Attributes.src "/logo.svg" ] []
     , explanations model
+    , gameOptions model
     , movingSquare model
     ]
 
