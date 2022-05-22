@@ -22,11 +22,6 @@ type alias Position =
 
 type Direction = Up | Down | Left | Right
 
-type alias Offset =
-  { dx : Int
-  , dy : Int
-  }
-
 {-| Got from JS side, and Model to modify -}
 type alias Flags = { now : Int }
 type alias Model =
@@ -44,12 +39,13 @@ type alias Model =
   , cooldownCherry : Int
   , tempsApparitionCherry : Int
   , gameOver : Bool
+  , wallOn : Bool
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= 0 , y = 0}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= -1 , y = -1} 0 0 False
+  |> \time -> Model False time time 0 {cases = [{x= boardSize//2 , y = boardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 False False
   |> Update.none
 
 {-| All your messages should go there -}
@@ -64,9 +60,24 @@ type Msg
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct 
  -|   Cmds. -}
+
+hitTheWall : Model -> Bool
+hitTheWall model = 
+  case model.snake.cases of 
+    h :: t ->
+      if h.x < 1 || h.y < 1 || h.x == boardSize || h.y == boardSize then
+        --(HitTheWall, Just h)
+       True
+      else 
+        False
+      
+    _ ->
+      False
+
 updateSnake : Model -> Model
 updateSnake model =
   let
+      casesPrint = Debug.log "snake " snake
       snake = model.snake
       newSnake = updateSnakeBody model
   in
@@ -168,7 +179,7 @@ nextFrame time model =
 
       if model.gameOver then
         (model, Cmd.none)
-      else if collisionAvecMur model || collisionAvecLuiMeme model then 
+      else if hitTheWall model || hitTheWall model then 
         ({ model | gameOver = True }, Cmd.none)
       else if isSnakeEatApple model then 
         (updateSnake model, Random.generate NewApplePosition randomPosition )
