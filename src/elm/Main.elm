@@ -84,12 +84,22 @@ updateSnake : Model -> Model
 updateSnake model =
   let
       test =  Debug.log "wall " model.randomWall
+
+      test2 = Debug.log "passs " model.snake
       snake = model.snake
       newSnake = updateSnakeBody model
   in
     {
       model | snake = newSnake.snake --newSnake
     }
+
+collisionWithWallUpdateSnake : List Position -> List Position
+collisionWithWallUpdateSnake positions = 
+    positions
+      |> List.reverse
+      |> List.drop 2
+      |> List.reverse
+  
 
 updateSnakeBody: Model -> Model
 updateSnakeBody model = 
@@ -100,9 +110,14 @@ updateSnakeBody model =
                 |> Maybe.withDefault  {x= 0 , y = 0}
       newHeadPosition = getNewHeadPosition currentHead model.snake.cases model.snake.direction
       cases = movePositions model.snake.cases newHeadPosition
-      newCases = if isSnakeEatApple model then cases else stripLast cases
+
+      newCases = 
+        if isSnakeEatApple model then cases 
+        else if collisionWithRandomWall model then collisionWithWallUpdateSnake cases
+        else stripLast cases
+      
   in
-    {model |snake = {cases = newCases, head= currentHead, direction = model.snake.direction}}
+    {model |snake = {cases = newCases, head= newHeadPosition, direction = model.snake.direction}}
 
 isSnakeEatApple : Model -> Bool
 isSnakeEatApple model = model.snake.head == model.apple
@@ -114,8 +129,8 @@ collisionAvecLuiMeme : Model -> Bool
 collisionAvecLuiMeme model = False
     -- List.member model.snake.head (List.drop 1 model.snake.cases)
 
---collisionWithRandomWall : Model -> Bool
---collisionWithRandomWall model =  TODO
+collisionWithRandomWall : Model -> Bool
+collisionWithRandomWall model =  List.member model.snake.head model.randomWall
     
 
 randomPosition : Model -> Random.Generator ( Int, Int )
@@ -194,6 +209,10 @@ nextFrame time model =
 
       if model.gameOver then
         (model, Cmd.none)
+      else if collisionWithRandomWall model && List.length model.snake.cases < 2 then 
+        ({ model | gameOver = True }, Cmd.none)
+      --else if collisionWithRandomWall model && List.length model.snake.cases > 1 then 
+      --  (updateSnake model, Cmd.none)
       else if model.wallOn && (hitTheWall model || hitTheWall model) then 
         ({ model | gameOver = True }, Cmd.none)
       else if isSnakeEatApple model then 
@@ -227,7 +246,7 @@ nextFrame time model =
 {-| Main update function, mainly used as a router for subfunctions -}
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case Debug.log "msg " msg of
+  case msg of
     ToggleGameLoop -> toggleGameLoop model
     KeyDown key -> keyDown key model
     NextFrame time -> nextFrame time model
