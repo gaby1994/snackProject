@@ -109,6 +109,8 @@ setScore : Model -> Model
 setScore model = 
   let 
     timeUsed = toSecond utc (millisToPosix model.time) 
+    test = Debug.log "test : " timeUsed
+
   in
   
     if isSnakeEatApple model then
@@ -117,7 +119,7 @@ setScore model =
       if isSnakeEatCherry model then
         {model | score = model.score + 300}
       else
-        {model | score = model.score + 10 * timeUsed}
+        {model | score = model.score + 10}
 
 randomPosition : Random.Generator ( Int, Int )
 randomPosition =
