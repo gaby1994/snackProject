@@ -36,7 +36,8 @@ type alias Model =
     }
   , apple : Position
   , cherry : Position
-  , compteurApparitionCherry : Int
+  , cooldownCherry : Int
+  , tempsApparitionCherry : Int
   , gameOver : Bool
   , wallOn : Bool
   }
@@ -183,7 +184,7 @@ nextFrame time model =
       else if isSnakeEatApple model then 
         (updateSnake model, Random.generate NewApplePosition randomPosition )
       else if isSnakeEatCherry model then 
-        (updateSnake model, Random.generate NewCherryPosition randomPosition )
+        ({model | snake = (updateSnake model).snake, cherry = {x= -2 , y = -2}, tempsApparitionCherry = 500}, Cmd.none)
       else
         updateSnake model
           |> Setters.setTime time_
@@ -191,14 +192,22 @@ nextFrame time model =
           |> Update.none
 
     else
-      if model.compteurApparitionCherry /= 500 then
-        ({model | compteurApparitionCherry = model.compteurApparitionCherry + 1}, Cmd.none )
-      else if model.compteurApparitionCherry == 500 then
-        ({model | compteurApparitionCherry = 0}, Random.generate NewCherryPosition randomPosition)
+      if model.cooldownCherry == 6000 then
+
+        if model.cherry == {x= -1 , y = -1} then 
+          (model, Random.generate NewCherryPosition randomPosition)
+        else 
+          if model.tempsApparitionCherry /= 500 then
+            ({model | tempsApparitionCherry = model.tempsApparitionCherry + 1}, Cmd.none)
+          else
+            ({model | tempsApparitionCherry = 0, cooldownCherry = 0, cherry = {x= -1 , y = -1} }, Cmd.none)
       else 
-        time_
-        |> Setters.setTimeIn model
-        |> Update.none
+        if model.cooldownCherry /= 6000 then
+          ({model | cooldownCherry = model.cooldownCherry + 1}, Cmd.none )
+        else
+          time_
+          |> Setters.setTimeIn model
+          |> Update.none 
 
 {-| Main update function, mainly used as a router for subfunctions -}
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -237,14 +246,27 @@ movingSquare model =
     )
 
 actualTime : Model -> Html msg
-actualTime { time } =
+actualTime model =
   Html.div [ Attributes.class "actual-time" ]
-    [ Html.text "Actual time"
-    , time
-      |> String.fromInt
-      |> Html.text
-      |> List.singleton
-      |> Html.code []
+    [ 
+      Html.text "Actual time"
+        , model.time
+        |> String.fromInt
+        |> Html.text
+        |> List.singleton
+        |> Html.code []
+      , Html.text "temps avant apparition du cherry : "
+        , (6000 - model.cooldownCherry)
+        |> String.fromInt
+        |> Html.text
+        |> List.singleton
+        |> Html.code []
+      , Html.text "temps restant avant reinitialisation du cherry : "
+        , (500 - model.tempsApparitionCherry)
+        |> String.fromInt
+        |> Html.text
+        |> List.singleton
+        |> Html.code []
     ]
 
 explanations : Model -> Html Msg
@@ -252,11 +274,12 @@ explanations ({ gameStarted } as model) =
   let word = if gameStarted then "Stop" else "Start" in
   Html.div [ Attributes.class "separator" ]
     [ Html.h1 []
-      [ Html.text "Welcome to the snake project!" ]
+      [ Html.text "Projet Snake Gabriel-Matthias-Nathalia" ]
     , actualTime model
     , Html.button
       [ Events.onClick ToggleGameLoop, Attributes.class "btn" ]
       [ Html.text (String.join " " [word, "game loop"]) ]
+    , if model.gameOver then Html.h2 [] [ Html.text "Game Over!" ] else Html.h2 [] [ Html.text "score : 0"  ]
     ]
 
 {-| Main view functions, composing all functions in one -}
@@ -265,7 +288,6 @@ view model =
   Html.main_ []
     [ Html.img [ Attributes.src "/logo.svg" ] []
     , explanations model
-    , if model.gameOver then h1 [] [ Html.text "Game Over!" ] else h1 [] [ Html.text "score" ]
     , movingSquare model
     ]
 
