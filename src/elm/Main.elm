@@ -42,13 +42,16 @@ type alias Model =
   , tempsApparitionCherry : Int
   , gameOver : Bool
   , wallOn : Bool
+  , randomWallOn : Bool
+  , randomWall : List Position
   }
 
 init : Flags -> ( Model, Cmd Msg )
 init { now } =
   now
-  |> \time -> Model False time time 0 {cases = [{x= boardSize//2 , y = boardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 0 False False
-  |> Update.none
+  |> \time -> Model False time time 0 {cases = [{x= boardSize//2 , y = boardSize//2}], direction = Up, head = {x= 0 , y = 0}} {x= 5 , y = 5} {x= 15 , y = 30} 0 0 False False False [{x=-1,y=-1}]
+  |> Update.none  
+
 
 {-| All your messages should go there -}
 type Key = ArrowUp | ArrowRight | ArrowDown | ArrowLeft | Space
@@ -59,6 +62,8 @@ type Msg
   | NewApplePosition ( Int, Int )
   | NewCherryPosition ( Int, Int )
   | WallIsChecked Bool
+  | RandomWallIsChecked Bool 
+  | ExtraWallUpdate ( Int, Int )
 
 {-| Manage all your updates here, from the main update function to each
  -|   subfunction. You can use the helpers in Update.elm to help construct 
@@ -78,6 +83,7 @@ hitTheWall model =
 updateSnake : Model -> Model
 updateSnake model =
   let
+      test =  Debug.log "wall " model.randomWall
       snake = model.snake
       newSnake = updateSnakeBody model
   in
@@ -108,8 +114,9 @@ collisionAvecLuiMeme : Model -> Bool
 collisionAvecLuiMeme model = False
     -- List.member model.snake.head (List.drop 1 model.snake.cases)
 
-collisionWithRandomWall : Model -> Bool
-collisionWithRandomWall model = False
+--collisionWithRandomWall : Model -> Bool
+--collisionWithRandomWall model =  TODO
+    
 
 randomPosition : Model -> Random.Generator ( Int, Int )
 randomPosition model =
@@ -177,8 +184,13 @@ nextFrame : Posix -> Model -> ( Model, Cmd Msg )
 nextFrame time model =
   let
     time_ = Time.posixToMillis time
+    index = List.length model.randomWall
   in
-    if time_ - model.lastUpdate >= 100 then
+    if index < 10 then 
+      ( model, Random.generate ExtraWallUpdate (randomPosition model)) 
+      
+
+    else if time_ - model.lastUpdate >= 100 then
 
       if model.gameOver then
         (model, Cmd.none)
@@ -215,7 +227,7 @@ nextFrame time model =
 {-| Main update function, mainly used as a router for subfunctions -}
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case msg of
+  case Debug.log "msg " msg of
     ToggleGameLoop -> toggleGameLoop model
     KeyDown key -> keyDown key model
     NextFrame time -> nextFrame time model
@@ -228,26 +240,25 @@ update msg model =
         ({ model | wallOn = False }, Cmd.none )
       else 
         ({ model | wallOn = True }, Cmd.none )
+    RandomWallIsChecked  isChecked ->
+      if isChecked == True then 
+        ({ model | randomWallOn = False }, Cmd.none )
+      else 
+        ({ model | randomWallOn = True }, Cmd.none )
+    ExtraWallUpdate (x,y) ->
+      ( { model | randomWall = model.randomWall ++ [{ x = x, y = y }]  }, Cmd.none )
 
 {-| Manage all your view functions here. -}
 cell : Bool -> Model-> Int -> Int -> Html msg
 cell active model x y = 
-  let 
-    class = if active then "cell active" 
+  
+  let class = if active then "cell active" 
             else if model.apple.x == x && model.apple.y == y then "apple" 
             else if model.wallOn && (y == 0 || x ==0 || y == boardSize-1 || x ==boardSize-1) then "wall"
+            else if model.randomWallOn && List.member {x=x,y=y} model.randomWall then "wall"
             else if model.cherry.x == x && model.cherry.y == y then "cherry"  else "cell" 
   in
   Html.div [ Attributes.class class ] []
-
-wallSquares : Bool -> Int -> Int -> Html msg
-wallSquares active x y = 
-  let
-      class = if active then "cell active"
-              else if x == 0 || y == 0 || x == boardSize || y == boardSize then "cell"
-              else ""
-  in
-    Html.div [ Attributes.class class ] []
 
 movingSquare : Model -> Html msg
 movingSquare model =
@@ -311,10 +322,18 @@ type alias Checkbox =
 
 gameOptions : Model -> Html Msg
 gameOptions model =
-    Html.div []
+    Html.div[]
     [
-      Html.label [] [Html.text "Wall on"]
-      ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.wallOn, onClick(WallIsChecked model.wallOn)  ] []
+      Html.div []
+      [
+        Html.label [] [Html.text "Wall on"]
+        ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.wallOn, onClick(WallIsChecked model.wallOn)  ] []
+      ],
+      Html.div []
+      [
+        Html.label [] [Html.text "Random wall on"]
+        ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.randomWallOn, onClick(RandomWallIsChecked model.randomWallOn)  ] []
+      ]
     ]
 
 {-| Main view functions, composing all functions in one -}
