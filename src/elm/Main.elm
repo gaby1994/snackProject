@@ -249,9 +249,15 @@ update msg model =
     KeyDown key -> keyDown key model
     NextFrame time -> nextFrame time model
     NewApplePosition ( x, y ) ->
+      if List.member {x=x,y=y} model.randomWall then
+      (updateSnake model, Random.generate NewApplePosition (randomPosition model))
+      else
       ( { model | apple = { x = x, y = y } }, Cmd.none )
     NewCherryPosition ( x, y ) ->
-      ( { model | cherry = { x = x, y = y } }, Cmd.none )
+      if List.member {x=x,y=y} model.randomWall then
+        (model, Random.generate NewCherryPosition (randomPosition model) )
+      else
+        ( { model | cherry = { x = x, y = y } }, Cmd.none )
     WallIsChecked  isChecked ->
       if isChecked == True then 
         ({ model | wallOn = False }, Cmd.none )
@@ -262,8 +268,11 @@ update msg model =
         ({ model | randomWallOn = False }, Cmd.none )
       else 
         ({ model | randomWallOn = True }, Cmd.none )
-    ExtraWallUpdate (x,y) ->
-      ( { model | randomWall = model.randomWall ++ [{ x = x, y = y }]  }, Cmd.none )
+    ExtraWallUpdate (x,y) -> --dans le cas ou un utilisateur décide de générer un mur pendant le jeu
+      if List.member {x=model.apple.x,y=model.apple.y} model.randomWall || List.member {x=model.cherry.x,y=model.cherry.y} model.randomWall then
+        ( { model | randomWall = model.randomWall  }, Cmd.none )
+      else 
+        ( { model | randomWall = model.randomWall ++ [{ x = x, y = y }]  }, Cmd.none )
 
 {-| Manage all your view functions here. -}
 cell : Bool -> Model-> Int -> Int -> Html msg
@@ -350,6 +359,11 @@ gameOptions model =
       [
         Html.label [] [Html.text "Random wall on"]
         ,Html.input [ Attributes.type_ "checkbox", Attributes.checked model.randomWallOn, onClick(RandomWallIsChecked model.randomWallOn)  ] []
+      ]
+      , Html.div []
+      [
+        Html.label [] [Html.text "Grid size: 40"]
+        ,Html.input [ Attributes.type_ "", Attributes.checked model.randomWallOn, onClick(RandomWallIsChecked model.randomWallOn)  ] []
       ]
     ]
 
